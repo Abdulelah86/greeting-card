@@ -3,204 +3,138 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Greeting Card – Name on Image</title>
+<title>Greeting Card</title>
 <style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+  :root { --gap: 12px; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; background:#f8fafc; color:#0f172a; }
   .wrap { max-width: 900px; margin: 0 auto; }
-  .controls { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); margin-bottom: 12px; }
-  label { font-size: 14px; display: grid; gap: 6px; }
-  input[type="text"], input[type="url"], select { padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
-  input[type="range"] { width: 100%; }
-  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
-  button { padding: 10px 14px; border: 0; border-radius: 8px; cursor: pointer; }
-  button.primary { background: #4f46e5; color: white; }
-  button.secondary { background: #e5e7eb; }
-  canvas { width: 100%; height: auto; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; }
-  small.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
-  .tip { color:#334155; font-size: 13px; }
+  .controls { display: grid; gap: var(--gap); grid-template-columns: 1fr 160px 160px; align-items: end; margin: 0 0 12px; }
+  .controls label { display: grid; gap: 6px; font-size: 14px; }
+  input[type="text"] { padding:10px 12px; border:1px solid #cbd5e1; border-radius: 10px; background:white; }
+  button { padding:10px 14px; border:0; border-radius:10px; cursor:pointer; background:#4f46e5; color:white; }
+  .secondary { background:#e5e7eb; color:#111827; }
+  canvas { width: 100%; height: auto; background: #e2e8f0; border:1px solid #e5e7eb; border-radius: 12px; }
+  .row { display:flex; gap: var(--gap); flex-wrap: wrap; margin: 10px 0 18px; }
+  small.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; display:block; }
+  .err { color:#b91c1c; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Greeting Card</h1>
-  <p class="tip">Tip: For the share link to work everywhere, host your image with this page (same site) or use an image URL that has proper CORS headers.</p>
+  <p>This page uses the image file <strong>card.png</strong> that sits in the <em>same folder</em> as this HTML. No external URLs.</p>
 
   <div class="controls">
-    <label>Base image URL (optional)
-      <input id="imgUrl" type="url" placeholder="e.g. /card.jpg or https://…">
-    </label>
     <label>Your name
       <input id="nameText" type="text" placeholder="Type a name…" />
     </label>
-    <label>Font
-      <select id="fontFamily">
-        <option value="Poppins,Arial,Helvetica,sans-serif">Poppins (default)</option>
-        <option value="Georgia,serif">Georgia</option>
-        <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">Impact</option>
-        <option value="'Times New Roman', Times, serif">Times New Roman</option>
-        <option value="Arial, Helvetica, sans-serif">Arial</option>
-      </select>
-    </label>
-    <label>Font size (px)
-      <input id="fontSize" type="range" min="24" max="200" value="96" />
-    </label>
-    <label>Vertical offset (px)
-      <input id="yOffset" type="range" min="-400" max="400" value="0" />
-    </label>
-    <label>Text color
-      <input id="textColor" type="color" value="#ffffff" />
-    </label>
-    <label>Outline (stroke) width
-      <input id="strokeWidth" type="range" min="0" max="16" value="6" />
-    </label>
-  </div>
-
-  <div class="buttons">
-    <button class="primary" id="renderBtn">Render</button>
-    <button class="secondary" id="copyLinkBtn">Copy Share Link</button>
+    <button id="renderBtn">Render</button>
     <button class="secondary" id="downloadBtn">Download PNG</button>
   </div>
 
   <canvas id="cardCanvas"></canvas>
+  <p id="status" class="err"></p>
 
-  <p><strong>Current share link:</strong><br>
-    <small class="mono" id="shareUrl">—</small>
-  </p>
-
-  <p class="tip">URL parameters supported: <code>?name=…&img=…&size=…&y=…&color=…&font=…&stroke=…</code></p>
+  <div class="row">
+    <button class="secondary" id="copyLinkBtn">Copy Share Link</button>
+    <div>
+      <strong>Current share link:</strong>
+      <small class="mono" id="shareUrl">—</small>
+    </div>
+  </div>
 </div>
 
 <script>
   const qs = new URLSearchParams(location.search);
-  const $ = (id) => document.getElementById(id);
-
-  const canvas = $('cardCanvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: false });
+  const nameInput = document.getElementById('nameText');
+  const canvas = document.getElementById('cardCanvas');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
 
   // Defaults
   const defaults = {
     img: 'card.png',
-    name: '',
-    size: 96,
-    y: 0,
-    color: '#ffffff',
-    font: 'Poppins,Arial,Helvetica,sans-serif',
-    stroke: 6
+    color: '#ffffff'
   };
 
-  $('imgUrl').value   = qs.get('img')   || defaults.img;
-  $('nameText').value = qs.get('name')  || defaults.name;
-  $('fontSize').value = qs.get('size')  || defaults.size;
-  $('yOffset').value  = qs.get('y')     || defaults.y;
-  $('textColor').value= qs.get('color') || defaults.color;
-  $('fontFamily').value = qs.get('font')|| defaults.font;
-  $('strokeWidth').value= qs.get('stroke') || defaults.stroke;
+  // Fill name from URL (?name=...)
+  nameInput.value = qs.get('name') || '';
 
   function buildLink() {
     const params = new URLSearchParams();
-    const img = $('imgUrl').value.trim() || defaults.img;
-    const name = $('nameText').value;
-    const size = parseInt($('fontSize').value,10);
-    const y    = parseInt($('yOffset').value,10);
-    const color= $('textColor').value;
-    const font = $('fontFamily').value;
-    const stroke = parseInt($('strokeWidth').value,10);
-
+    const name = nameInput.value.trim();
     if (name) params.set('name', name);
-    if (img)  params.set('img', img);
-    params.set('size', size);
-    params.set('y', y);
-    params.set('color', color);
-    params.set('font', font);
-    params.set('stroke', stroke);
-
-    const url = `${location.origin}${location.pathname}?${params.toString()}`;
-    $('shareUrl').textContent = url;
+    const url = `${location.origin}${location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    document.getElementById('shareUrl').textContent = url;
     return url;
   }
 
-  async function draw() {
-    const imgSrc = $('imgUrl').value.trim() || defaults.img;
-    const name   = $('nameText').value || '';
-    const size   = parseInt($('fontSize').value,10);
-    const yOffset= parseInt($('yOffset').value,10);
-    const color  = $('textColor').value;
-    const font   = $('fontFamily').value;
-    const stroke = parseInt($('strokeWidth').value,10);
-
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = imgSrc;
-
-    await new Promise((res, rej) => {
-      img.onload = res;
-      img.onerror = () => rej(new Error('Failed to load image. Check the URL or host it with this page.'));
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Could not load ' + src + '. Make sure card.png is in the same folder (case-sensitive).'));
+      img.src = src;
     });
+  }
 
+  async function draw() {
+    statusEl.textContent = '';
+    let img;
+    try {
+      img = await loadImage(defaults.img);
+    } catch (e) {
+      statusEl.textContent = e.message;
+      return;
+    }
+
+    // Prepare canvas to match image size
     canvas.width = img.naturalWidth || img.width;
     canvas.height = img.naturalHeight || img.height;
-
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+    // Draw the name text centered near bottom
+    const name = (nameInput.value || '').trim();
     if (name) {
+      const size = Math.round(Math.min(canvas.width, canvas.height) * 0.12); // adaptive
+      const stroke = Math.max(2, Math.round(size * 0.07));
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.35)';
-      ctx.shadowBlur = Math.max(8, Math.floor(size/10));
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 2;
-
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = `700 ${size}px ${font}`;
+      ctx.font = `700 ${size}px Poppins,Arial,Helvetica,sans-serif`;
       const centerX = canvas.width / 2;
-      const baseY = canvas.height * 0.75 + yOffset;
-
-      if (stroke > 0) {
-        ctx.lineWidth = stroke;
-        ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-        ctx.strokeText(name, centerX, baseY);
-      }
-      ctx.fillStyle = color;
+      const baseY = canvas.height * 0.75; // 75% down
+      ctx.lineWidth = stroke;
+      ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+      ctx.strokeText(name, centerX, baseY);
+      ctx.fillStyle = defaults.color;
       ctx.fillText(name, centerX, baseY);
-
       ctx.restore();
     }
-
     buildLink();
   }
 
-  $('renderBtn').addEventListener('click', draw);
-
-  $('copyLinkBtn').addEventListener('click', async () => {
-    const url = buildLink();
-    try {
-      await navigator.clipboard.writeText(url);
-      alert('Share link copied!');
-    } catch {
-      const r = document.createRange();
-      const n = $('shareUrl');
-      r.selectNode(n);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(r);
-      alert('Select & copy the link shown.');
-    }
-  });
-
-  $('downloadBtn').addEventListener('click', () => {
+  // Listeners
+  document.getElementById('renderBtn').addEventListener('click', draw);
+  document.getElementById('downloadBtn').addEventListener('click', () => {
     const a = document.createElement('a');
     a.download = 'greeting.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
   });
-
-  ['imgUrl','nameText','fontFamily','fontSize','yOffset','textColor','strokeWidth']
-    .forEach(id => $(id).addEventListener('input', buildLink));
-
-  draw().catch(err => {
-    $('shareUrl').textContent = err.message + ' — You can still set an image URL and click Render.';
+  document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(buildLink());
+      alert('Link copied');
+    } catch {
+      alert('Copy failed. Select and copy the link shown.');
+    }
   });
+  nameInput.addEventListener('input', buildLink);
+
+  // Auto-render on load
+  draw();
 </script>
 </body>
 </html>
