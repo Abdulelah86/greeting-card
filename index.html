@@ -9,55 +9,98 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
+  :root {
+    --panel-w: 320px;
+    --gap: 16px;
+    --border: 1px solid #e5e7eb;
+  }
   body {
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 16px;
     background:#f8fafc;
     color:#0f172a;
   }
-  .wrap { max-width: 900px; margin: 0 auto; text-align:center; }
-  .controls { display:grid; gap:12px; justify-items:center; margin-bottom: 16px; }
-  .row { display:grid; grid-template-columns: minmax(240px,420px); gap:12px; width:100%; justify-content:center; }
-  .field { width:100%; text-align:left; }
-  .field label{ display:block; font-size:14px; margin-bottom:6px; color:#334155; }
-  .field input[type="text"],
-  .field select {
+  h1 { text-align:center; margin:0 0 14px; }
+  .layout {
+    display:grid;
+    grid-template-columns: 1fr var(--panel-w);
+    gap: var(--gap);
+    align-items: start;
+  }
+  /* Canvas area (left) */
+  .stage {
+    background:#fff;
+    border: var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  canvas {
+    width:100%;
+    height:auto;
+    background:#e2e8f0;
+    border: var(--border);
+    border-radius: 12px;
+  }
+  .actions {
+    display:flex;
+    gap:10px;
+    margin-top: 12px;
+    justify-content:flex-start;
+  }
+  .btn {
+    padding:10px 16px; border:0; border-radius:8px; cursor:pointer; font-size:15px;
+    background:#e5e7eb; color:#111827;
+  }
+
+  /* Controls panel (right) */
+  .panel {
+    background:#fff;
+    border: var(--border);
+    border-radius:12px;
+    padding:14px;
+    position: sticky;
+    top: 10px;
+  }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:14px; margin-bottom:6px; color:#334155; }
+  .field input[type="text"], .field select {
     width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:16px; background:#fff;
   }
-  .field input[type="color"] { width:56px; height:36px; padding:0; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
-  .inline { display:flex; align-items:center; gap:10px; }
-  .range-row{ display:grid; grid-template-columns: 1fr auto; align-items:center; gap:10px; }
-  .range-row input[type="range"]{ width:100%; }
-  canvas {
-    width: 100%;
-    height: auto;
-    background: #e2e8f0;
-    border:1px solid #e5e7eb;
-    border-radius: 12px;
-    margin: 16px 0;
+  .range-row { display:grid; grid-template-columns: 1fr auto; align-items:center; gap:10px; }
+  .range-row input[type="range"] { width:100%; }
+  .color-row { display:flex; align-items:center; gap:10px; }
+  .color-row input[type="color"] { width:56px; height:36px; padding:0; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+  .muted { color:#64748b; font-size:12px; }
+
+  /* Responsive: stack on small screens */
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    .panel { position: static; }
   }
-  .buttons { display:flex; justify-content:center; gap:12px; margin-top: 12px; }
-  button {
-    padding:10px 16px; border:0; border-radius:8px; cursor:pointer; font-size:15px;
-  }
-  .secondary { background:#e5e7eb; color:#111827; }
-  .err { color:#b91c1c; font-size:14px; margin-top:8px; min-height:1em; }
 </style>
 </head>
 <body>
-<div class="wrap">
   <h1>Greeting Card</h1>
 
-  <!-- Controls -->
-  <div class="controls">
-    <div class="row">
+  <div class="layout">
+    <!-- Left: Canvas -->
+    <div class="stage">
+      <canvas id="cardCanvas"></canvas>
+      <div class="actions">
+        <button class="btn" id="downloadBtn">Download PNG</button>
+      </div>
+      <p id="status" class="muted"></p>
+    </div>
+
+    <!-- Right: Controls -->
+    <aside class="panel">
       <div class="field">
         <label for="nameText">Name</label>
         <input id="nameText" type="text" placeholder="Type a name…" />
       </div>
-    </div>
 
-    <div class="row">
       <div class="field">
         <label for="fontFamily">Font</label>
         <select id="fontFamily">
@@ -70,83 +113,51 @@
           <option value="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif">Impact</option>
         </select>
       </div>
-    </div>
 
-    <div class="row">
       <div class="field">
         <label for="fontSize">Font Size: <span id="fontSizeVal">96</span> px</label>
         <div class="range-row">
           <input id="fontSize" type="range" min="24" max="300" value="96" />
-          <span>smaller / larger</span>
+          <span class="muted">smaller / larger</span>
         </div>
       </div>
-    </div>
 
-    <div class="row">
       <div class="field">
         <label for="posSlider">Vertical Position (<span id="posVal">75</span>%)</label>
         <div class="range-row">
           <input id="posSlider" type="range" min="0" max="100" value="75" />
-          <span>Top ↑ / Bottom ↓</span>
+          <span class="muted">Top ↑ / Bottom ↓</span>
         </div>
       </div>
-    </div>
 
-    <div class="row">
       <div class="field">
         <label for="textColor">Text Color</label>
-        <div class="inline">
+        <div class="color-row">
           <input id="textColor" type="color" value="#ffffff" />
-          <span id="colorHex">#ffffff</span>
+          <span id="colorHex" class="muted">#ffffff</span>
         </div>
       </div>
-    </div>
-
-    <div class="row">
-      <div class="field">
-        <label>Border (Outline)</label>
-        <div class="inline">
-          <input id="borderToggle" type="checkbox" checked />
-          <span>Enable</span>
-          <input id="borderWidth" type="range" min="0" max="20" value="7" />
-          <span id="borderVal">7px</span>
-        </div>
-      </div>
-    </div>
+    </aside>
   </div>
-
-  <!-- Card -->
-  <canvas id="cardCanvas"></canvas>
-  <p id="status" class="err"></p>
-
-  <!-- Buttons (bottom) -->
-  <div class="buttons">
-    <button class="secondary" id="downloadBtn">Download PNG</button>
-  </div>
-</div>
 
 <script>
-  const nameInput    = document.getElementById('nameText');
-  const posSlider    = document.getElementById('posSlider');
-  const posVal       = document.getElementById('posVal');
-  const fontFamily   = document.getElementById('fontFamily');
-  const fontSize     = document.getElementById('fontSize');
-  const fontSizeVal  = document.getElementById('fontSizeVal');
-  const textColor    = document.getElementById('textColor');
-  const colorHex     = document.getElementById('colorHex');
-  const borderToggle = document.getElementById('borderToggle');
-  const borderWidth  = document.getElementById('borderWidth');
-  const borderVal    = document.getElementById('borderVal');
+  const nameInput   = document.getElementById('nameText');
+  const fontFamily  = document.getElementById('fontFamily');
+  const fontSize    = document.getElementById('fontSize');
+  const fontSizeVal = document.getElementById('fontSizeVal');
+  const posSlider   = document.getElementById('posSlider');
+  const posVal      = document.getElementById('posVal');
+  const textColor   = document.getElementById('textColor');
+  const colorHex    = document.getElementById('colorHex');
 
   const canvas = document.getElementById('cardCanvas');
   const ctx = canvas.getContext('2d');
   const statusEl = document.getElementById('status');
 
   const defaults = {
-    img: 'card.png',         // must be in same folder (case-sensitive)
-    color: '#ffffff',        // default text color
-    outlineOpacity: 0.65,    // border darkness
-    scale: 0.10              // initial guess: 10% of image height
+    img: 'card.png',      // must be in same folder (case-sensitive)
+    color: '#ffffff',
+    scale: 0.10           // initial size guess: 10% of image height
   };
 
   function loadImage(src) {
@@ -159,10 +170,8 @@
   }
 
   let baseImage = null;
-
   async function ensureImage() {
-    if (baseImage) return baseImage;
-    baseImage = await loadImage(defaults.img);
+    if (!baseImage) baseImage = await loadImage(defaults.img);
     return baseImage;
   }
 
@@ -176,12 +185,12 @@
       return;
     }
 
-    // Match canvas to image
+    // Size canvas to image
     if (canvas.width !== (img.naturalWidth || img.width) || canvas.height !== (img.naturalHeight || img.height)) {
       canvas.width = img.naturalWidth || img.width;
       canvas.height = img.naturalHeight || img.height;
 
-      // On first image load, set a sensible font size default (10% of height)
+      // First load: set font size default ≈ 10% of height
       if (!fontSize.dataset.initialized) {
         const suggested = Math.max(24, Math.round(canvas.height * defaults.scale));
         fontSize.value = Math.min(300, suggested);
@@ -190,13 +199,14 @@
       }
     }
 
+    // Draw image
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+    // Draw text
     const name = (nameInput.value || '').trim();
     if (!name) return;
 
-    // Live values
     const sizePx   = parseInt(fontSize.value, 10);
     const yPercent = parseInt(posSlider.value, 10) / 100; // 0..1
     const baseY    = Math.round(canvas.height * yPercent);
@@ -205,29 +215,19 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.font = `700 ${sizePx}px ${fontFamily.value}`;
-    const centerX = Math.round(canvas.width / 2);
-
-    // Outline
-    if (borderToggle.checked && parseInt(borderWidth.value,10) > 0) {
-      ctx.lineWidth = parseInt(borderWidth.value, 10);
-      ctx.strokeStyle = `rgba(0,0,0,${defaults.outlineOpacity})`;
-      ctx.strokeText(name, centerX, baseY);
-    }
-
-    // Fill
     ctx.fillStyle = textColor.value || defaults.color;
+
+    const centerX = Math.round(canvas.width / 2);
     ctx.fillText(name, centerX, baseY);
     ctx.restore();
   }
 
-  // Live updates: re-draw on every change
-  [nameInput, posSlider, fontFamily, fontSize, textColor, borderToggle, borderWidth].forEach(el => {
+  // Live updates
+  [nameInput, fontFamily, fontSize, posSlider, textColor].forEach(el => {
     el.addEventListener('input', () => {
-      // update labels
-      if (el === posSlider) posVal.textContent = posSlider.value;
       if (el === fontSize) fontSizeVal.textContent = fontSize.value;
+      if (el === posSlider) posVal.textContent = posSlider.value;
       if (el === textColor) colorHex.textContent = textColor.value;
-      if (el === borderWidth) borderVal.textContent = borderWidth.value + 'px';
       draw();
     });
   });
@@ -240,14 +240,11 @@
     a.click();
   });
 
-  // Initial render
+  // First render
   window.addEventListener('load', async () => {
-    // set UI labels
     posVal.textContent   = posSlider.value;
     fontSizeVal.textContent = fontSize.value;
     colorHex.textContent = textColor.value;
-    borderVal.textContent= borderWidth.value + 'px';
-
     await ensureImage();
     draw();
   });
