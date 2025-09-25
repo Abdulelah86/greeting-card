@@ -43,13 +43,20 @@
   }
   .actions {
     display:flex;
+    flex-direction:column;
     gap:10px;
     margin-top: 12px;
-    justify-content:flex-start;
   }
   .btn {
     padding:10px 16px; border:0; border-radius:8px; cursor:pointer; font-size:15px;
     background:#e5e7eb; color:#111827;
+  }
+  .name-box {
+    padding:10px 12px;
+    border:1px solid #cbd5e1;
+    border-radius:8px;
+    font-size:16px;
+    width:100%;
   }
 
   /* Controls panel (right) */
@@ -63,7 +70,7 @@
   }
   .field { margin-bottom:12px; }
   .field label { display:block; font-size:14px; margin-bottom:6px; color:#334155; }
-  .field input[type="text"], .field select {
+  .field select {
     width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:16px; background:#fff;
   }
   .range-row { display:grid; grid-template-columns: 1fr auto; align-items:center; gap:10px; }
@@ -72,11 +79,9 @@
   .color-row input[type="color"] { width:56px; height:36px; padding:0; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
   .muted { color:#64748b; font-size:12px; }
 
-  /* Responsive: stack on small screens */
+  /* Responsive */
   @media (max-width: 900px) {
-    .layout {
-      grid-template-columns: 1fr;
-    }
+    .layout { grid-template-columns: 1fr; }
     .panel { position: static; }
   }
 </style>
@@ -89,6 +94,9 @@
     <div class="stage">
       <canvas id="cardCanvas"></canvas>
       <div class="actions">
+        <!-- Name input BELOW the card -->
+        <input id="nameText" type="text" class="name-box" placeholder="type your name" />
+        <!-- Download button -->
         <button class="btn" id="downloadBtn">Download PNG</button>
       </div>
       <p id="status" class="muted"></p>
@@ -96,11 +104,6 @@
 
     <!-- Right: Controls -->
     <aside class="panel">
-      <div class="field">
-        <label for="nameText">Name</label>
-        <input id="nameText" type="text" placeholder="Type a name…" />
-      </div>
-
       <div class="field">
         <label for="fontFamily">Font</label>
         <select id="fontFamily">
@@ -155,16 +158,16 @@
   const statusEl = document.getElementById('status');
 
   const defaults = {
-    img: 'card.png',      // must be in same folder (case-sensitive)
+    img: 'card.png',
     color: '#ffffff',
-    scale: 0.10           // initial size guess: 10% of image height
+    scale: 0.10
   };
 
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Could not load ' + src + '. Make sure card.png is in the same folder (case-sensitive).'));
+      img.onerror = () => reject(new Error('Could not load ' + src));
       img.src = src;
     });
   }
@@ -176,39 +179,18 @@
   }
 
   async function draw() {
-    statusEl.textContent = '';
     let img;
-    try {
-      img = await ensureImage();
-    } catch (e) {
-      statusEl.textContent = e.message;
-      return;
-    }
-
-    // Size canvas to image
-    if (canvas.width !== (img.naturalWidth || img.width) || canvas.height !== (img.naturalHeight || img.height)) {
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
-
-      // First load: set font size default ≈ 10% of height
-      if (!fontSize.dataset.initialized) {
-        const suggested = Math.max(24, Math.round(canvas.height * defaults.scale));
-        fontSize.value = Math.min(300, suggested);
-        fontSize.dataset.initialized = "1";
-        fontSizeVal.textContent = fontSize.value;
-      }
-    }
-
-    // Draw image
+    try { img = await ensureImage(); } catch (e) { statusEl.textContent = e.message; return; }
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    // Draw text
     const name = (nameInput.value || '').trim();
     if (!name) return;
 
     const sizePx   = parseInt(fontSize.value, 10);
-    const yPercent = parseInt(posSlider.value, 10) / 100; // 0..1
+    const yPercent = parseInt(posSlider.value, 10) / 100;
     const baseY    = Math.round(canvas.height * yPercent);
 
     ctx.save();
@@ -216,13 +198,11 @@
     ctx.textBaseline = 'middle';
     ctx.font = `700 ${sizePx}px ${fontFamily.value}`;
     ctx.fillStyle = textColor.value || defaults.color;
-
     const centerX = Math.round(canvas.width / 2);
     ctx.fillText(name, centerX, baseY);
     ctx.restore();
   }
 
-  // Live updates
   [nameInput, fontFamily, fontSize, posSlider, textColor].forEach(el => {
     el.addEventListener('input', () => {
       if (el === fontSize) fontSizeVal.textContent = fontSize.value;
@@ -232,7 +212,6 @@
     });
   });
 
-  // Download
   document.getElementById('downloadBtn').addEventListener('click', () => {
     const a = document.createElement('a');
     a.download = 'greeting.png';
@@ -240,7 +219,6 @@
     a.click();
   });
 
-  // First render
   window.addEventListener('load', async () => {
     posVal.textContent   = posSlider.value;
     fontSizeVal.textContent = fontSize.value;
